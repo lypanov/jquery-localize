@@ -46,16 +46,33 @@
 
     function defaultCallback(data) {
       $.localize.data[pkg] = data;
-      var keys, value;
+      var value;
       $wrappedSet.each(function(){
-        elem = $(this);
-        key = elem.attr("rel").match(/localize\[(.*?)\]/)[1];
-        value = valueForKey(key, data);
+        var elem = $(this);
+        var key = elem.attr("rel").match(/localize\[(.*?)\]/)[1];
+        var params = {};
+        elem.children("[rel*=params]").each(function(i, e) {
+          var myKey = $j(e).attr("rel").match(/params\[(.*?)\]/)[1];
+          params[myKey] = $j(e);
+        });
+        value = valueForKey(key, data) || "(missing)";
         if (elem.attr('tagName') == "INPUT") {
           elem.val(value);
         }
         else {
-          elem.text(value);
+          elem.text("");
+          var tokenizer = new $j.tokenizer([/%\[(\w+)\]/], function (src, real, re) {
+            var name = src.replace(re, function(all, name) { return name; });
+            return real ? [true, name] : [false, src];
+          });
+          var tokens = tokenizer.parse(value);
+          $j.each(tokens, function(i, e) {
+            if (e[0]) {
+              elem.append(params[e[1]].clone());
+            } else {
+              elem.append(e[1]);
+            }
+          });
         }
       });
     }
